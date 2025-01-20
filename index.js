@@ -22,7 +22,7 @@ app.get('/', (req, res) => {
   });
 // Middleware
 app.use(cors({
-    origin: 'http://localhost:5173',
+    origin: 'w-306-mealy.vercel.app',
     credentials: true,
     optionsSuccessStatus: 200,
     exposedHeaders: ['Access-Control-Allow-Origin']
