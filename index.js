@@ -11,23 +11,29 @@ const port = process.env.PORT || 3000;
 
 app.disable('x-powered-by');
 app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  next();
-});
+    res.header('Access-Control-Allow-Origin', 'https://w-306-mealy.vercel.app');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
+    next();
+  });
+  
+  // Move your existing cors middleware before the custom headers
+  app.use(cors({
+    origin: 'https://w-306-mealy.vercel.app',
+    credentials: true,
+    methods: ['GET', 'POST', 'OPTIONS', 'PUT', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization']
+  }));
 
 app.get('/', (req, res) => {
     res.json({ message: 'Welcome to the API' });
   });
-// Middleware
-app.use(cors({
-    origin: 'https://w-306-mealy.vercel.app',
-    credentials: true,
-    optionsSuccessStatus: 200,
-    exposedHeaders: ['Access-Control-Allow-Origin']
-  }));
-  app.use(express.json());
+
 
 // Initialize Firebase Admin
 try {
