@@ -10,7 +10,7 @@ const port = process.env.PORT || 3000;
 
 // CORS Configuration - Must come before any routes
 const corsOptions = {
-  origin: ['https://w-306-mealy.vercel.app', 'http://localhost:3000'],
+  origin: ['https://w-306-mealy.vercel.app', 'http://localhost:5173'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: [
@@ -65,6 +65,15 @@ const connectDB = async () => {
 connectDB();
 
 // Schema definitions
+const mealHistorySchema = new mongoose.Schema({
+  date: Date,
+  mealType: {
+    type: String,
+    enum: ['Lunch', 'Dinner']
+  },
+  eaten: Boolean
+});
+
 const userSchema = new mongoose.Schema({
   email: String,
   name: String,
@@ -74,7 +83,8 @@ const userSchema = new mongoose.Schema({
     default: false
   },
   lastEatenAt: Date,
-  fcmToken: String
+  fcmToken: String,
+  mealHistory: [mealHistorySchema]  // Add this to track meal history
 });
 
 const scheduleSchema = new mongoose.Schema({
