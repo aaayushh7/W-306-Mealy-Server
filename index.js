@@ -1,26 +1,24 @@
 require('dotenv').config();
 const express = require('express');
+const cors = require('cors');
 const mongoose = require('mongoose'); // Removed unused cors import
 const admin = require('firebase-admin');
 const app = express();
 const port = process.env.PORT || 3000;
 
-const allowCors = fn => async (req, res) => {
-    res.setHeader('Access-Control-Allow-Credentials', true);
-    res.setHeader('Access-Control-Allow-Origin', 'https://w-306-mealy.vercel.app');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-    res.setHeader(
-      'Access-Control-Allow-Headers',
-      'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, Cache-Control'
-    );
-    
-    if (req.method === 'OPTIONS') {
-      res.status(200).end();
-      return;
-    }
-    return await fn(req, res);
+const corsOptions = {
+    origin: 'https://w-306-mealy.vercel.app',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control'],
+    credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   };
   
+
+  app.use(cors(corsOptions));
+  app.options('*', cors(corsOptions));
+
   // Parse JSON requests
 app.use(express.json());
 
