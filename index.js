@@ -84,7 +84,13 @@ const userSchema = new mongoose.Schema({
   },
   lastEatenAt: Date,
   fcmToken: String,
-  mealHistory: [mealHistorySchema]  // Add this to track meal history
+  mealHistory: [mealHistorySchema],
+  isAway: {
+    type: Boolean,
+    default: false
+  },
+  awayStartDate: Date,
+  awayEndDate: Date
 });
 
 const scheduleSchema = new mongoose.Schema({
@@ -170,23 +176,65 @@ app.get('/api/users', authenticateUser, async (req, res) => {
   }
 });
 
+app.post('/api/users/toggle-away', authenticateUser, async (req, res) => {
+  try {
+    const user = await User.findOne({ firebaseUid: req.user.uid });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Toggle away status
+    user.isAway = !user.isAway;
+    
+    // Update away dates
+    if (user.isAway) {
+      user.awayStartDate = new Date();
+      user.awayEndDate = null;
+      // Reset hasEaten status when going away
+      user.hasEaten = false;
+    } else {
+      user.awayEndDate = new Date();
+    }
+
+    await user.save();
+    
+    // Return updated user list to refresh UI
+    const users = await User.find().select('-fcmToken');
+    res.json(users);
+  } catch (error) {
+    console.error('Toggle away status error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/users/mark-eaten', authenticateUser, async (req, res) => {
   try {
-    const user = await User.findOneAndUpdate(
-      { firebaseUid: req.user.uid },
-      { 
-        hasEaten: true,
-        lastEatenAt: new Date()
-      },
-      { new: true }
-    );
-    res.json(user);
+    const user = await User.findOne({ firebaseUid: req.user.uid });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Prevent marking as eaten if user is away
+    if (user.isAway) {
+      return res.status(400).json({ 
+        error: 'Cannot mark as eaten while in away mode'
+      });
+    }
+
+    user.hasEaten = true;
+    user.lastEatenAt = new Date();
+    await user.save();
+
+    // Return full user list to refresh UI
+    const users = await User.find().select('-fcmToken');
+    res.json(users);
   } catch (error) {
     console.error('Mark eaten error:', error);
     res.status(500).json({ error: error.message });
   }
 });
-
 app.get('/api/schedule', authenticateUser, async (req, res) => {
   try {
     let schedule = await Schedule.findOne();
@@ -223,20 +271,43 @@ app.put('/api/schedule', authenticateUser, async (req, res) => {
   }
 });
 
+app.post('/api/users/reset-eaten', authenticateUser, async (req, res) => {
+  try {
+    await User.updateMany({ isAway: false }, { hasEaten: false });
+    const users = await User.find().select('-fcmToken');
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/report-food-finished', authenticateUser, async (req, res) => {
   try {
-    const users = await User.find();
-    const remainingUsers = users.filter(user => !user.hasEaten);
+    const reportingUser = await User.findOne({ firebaseUid: req.user.uid });
     
-    if (remainingUsers.length === 0) {
-      return res.json({ message: "No users left, great job for finishing food!" });
+    if (!reportingUser) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
+    // Prevent reporting if user is away
+    if (reportingUser.isAway) {
+      return res.status(400).json({ 
+        error: 'Cannot report food status while in away mode'
+      });
+    }
+
+    const users = await User.find();
+    // Filter out away users when checking remaining users
+    const remainingUsers = users.filter(user => !user.hasEaten && !user.isAway);
     const usersWhoAte = users.filter(user => user.hasEaten);
     
-    // Send notifications to remaining users
+    if (remainingUsers.length === 0) {
+      return res.json({ message: "No active users left to eat!" });
+    }
+
+    // Send notifications only to non-away users
     for (const user of remainingUsers) {
-      if (user.fcmToken) {
+      if (user.fcmToken && !user.isAway) {
         try {
           await admin.messaging().send({
             notification: {
@@ -251,14 +322,13 @@ app.post('/api/report-food-finished', authenticateUser, async (req, res) => {
       }
     }
 
-    // Send notifications to users who have eaten
     for (const user of usersWhoAte) {
-      if (user.fcmToken) {
+      if (user.fcmToken && !user.isAway) {
         try {
           await admin.messaging().send({
             notification: {
               title: "Food Status",
-              body: `${remainingUsers.map(u => u.name).join(', ')} will be hungry tonight!`
+              body: `${remainingUsers.map(u => u.name).join(', ')} still need to eat!`
             },
             token: user.fcmToken
           });
@@ -268,17 +338,22 @@ app.post('/api/report-food-finished', authenticateUser, async (req, res) => {
       }
     }
 
-    res.json({ message: "Notifications sent successfully" });
+    res.json({ 
+      message: "Notifications sent successfully",
+      remainingActiveUsers: remainingUsers.length
+    });
   } catch (error) {
     console.error('Report food finished error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
+
 // Reset users' eaten status at midnight
 const resetEatenStatus = async () => {
   try {
-    await User.updateMany({}, { hasEaten: false });
+    // Only reset hasEaten status for non-away users
+    await User.updateMany({ isAway: false }, { hasEaten: false });
     console.log('Reset eaten status successful');
   } catch (error) {
     console.error('Reset eaten status error:', error);
