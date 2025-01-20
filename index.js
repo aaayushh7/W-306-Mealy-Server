@@ -1,35 +1,22 @@
 require('dotenv').config();
 const express = require('express');
+
 const cors = require('cors');
-const mongoose = require('mongoose'); // Removed unused cors import
+const mongoose = require('mongoose');
 const admin = require('firebase-admin');
+// const serviceAccount = require('./firebase-service-account.json');
+
 const app = express();
 const port = process.env.PORT || 3000;
 
-const corsOptions = {
-    origin: 'https://w-306-mealy.vercel.app',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control'],
+// Middleware
+app.use(cors({
+    origin: 'https://w-306-mealy.vercel.app/',
     credentials: true,
-    preflightContinue: false,
-    optionsSuccessStatus: 204
-  };
-
-  app.use(cors(corsOptions));
-  app.options('*', cors(corsOptions));
-
-  // Parse JSON requests
-app.use(express.json());
-
-// Root route with error handling
-app.get('/', (req, res) => {
-    try {
-        res.json({ message: 'Welcome to the API' });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
+    optionsSuccessStatus: 200,
+    exposedHeaders: ['Access-Control-Allow-Origin']
+  }));
+  app.use(express.json());
 
 // Initialize Firebase Admin
 try {
