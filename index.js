@@ -9,7 +9,17 @@ const admin = require('firebase-admin');
 const app = express();
 const port = process.env.PORT || 3000;
 
+app.use(cors({
+    origin: 'https://w-306-mealy.vercel.app',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
+  }));
+
 app.disable('x-powered-by');
+
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', 'https://w-306-mealy.vercel.app');
     res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
@@ -22,13 +32,6 @@ app.use((req, res, next) => {
     next();
   });
   
-  // Move your existing cors middleware before the custom headers
-  app.use(cors({
-    origin: 'https://w-306-mealy.vercel.app',
-    credentials: true,
-    methods: ['GET', 'POST', 'OPTIONS', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization']
-  }));
 
 app.get('/', (req, res) => {
     res.json({ message: 'Welcome to the API' });
