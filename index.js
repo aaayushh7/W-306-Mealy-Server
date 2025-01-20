@@ -13,31 +13,12 @@ const corsOptions = {
     origin: 'https://w-306-mealy.vercel.app',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'X-Requested-With', 'Accept', 'Origin'],
-    exposedHeaders: ['Content-Range', 'X-Content-Range'],
-    preflightContinue: false,
-    optionsSuccessStatus: 204
+    allowedHeaders: ['Content-Type', 'Authorization'],
   };
   
-  app.use(cors(corsOptions));
-  app.use(express.json());
+app.use(cors(corsOptions));
+app.use(express.json());
   
-  // Add explicit CORS headers for all routes
-  app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', 'https://w-306-mealy.vercel.app');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cache-Control, X-Requested-With, Accept, Origin');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    
-    // Handle OPTIONS
-    if (req.method === 'OPTIONS') {
-      return res.status(204).end();
-    }
-    next();
-  });
-
-
-
 app.get('/', (req, res) => {
     res.json({ message: 'Welcome to the API' });
   });
