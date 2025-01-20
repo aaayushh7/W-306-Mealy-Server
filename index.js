@@ -11,12 +11,12 @@ const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors({
-    origin: ['https://w-306-mealy.vercel.app', 'http://localhost:3000'],
+    origin: ['https://w-306-mealy.vercel.app', 'https://w-306-mealy-server.vercel.app', 'http://localhost:3000'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     optionsSuccessStatus: 200
-  }));
+}));
   app.use(express.json());
 
 // Initialize Firebase Admin
@@ -85,6 +85,11 @@ const authenticateUser = async (req, res, next) => {
     res.status(401).json({ error: 'Unauthorized' });
   }
 };
+
+
+app.get('/', (req, res) => {
+    res.json({ message: 'Server is running' });
+  });
 
 // Routes
 app.post('/api/users/register', authenticateUser, async (req, res) => {
