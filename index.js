@@ -1,23 +1,39 @@
 require('dotenv').config();
 const express = require('express');
-
 const cors = require('cors');
 const mongoose = require('mongoose');
 const admin = require('firebase-admin');
-// const serviceAccount = require('./firebase-service-account.json');
-
 const app = express();
 const port = process.env.PORT || 3000;
 
+// CORS configuration
 const corsOptions = {
-    origin: 'https://w-306-mealy.vercel.app',
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  };
-  
+  origin: ['https://w-306-mealy.vercel.app', 'http://localhost:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Access-Control-Allow-Origin'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+};
+
+// Apply CORS middleware before other middlewares
 app.use(cors(corsOptions));
+
+// Enable pre-flight requests for all routes
+app.options('*', cors(corsOptions));
+
+// Apply JSON middleware after CORS
 app.use(express.json());
+
+// Add security headers middleware
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'https://w-306-mealy.vercel.app');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  next();
+});
   
 app.get('/', (req, res) => {
     res.json({ message: 'Welcome to the API' });
