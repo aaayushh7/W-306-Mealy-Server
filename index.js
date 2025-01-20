@@ -1,43 +1,40 @@
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
-const mongoose = require('mongoose');
+const mongoose = require('mongoose'); // Removed unused cors import
 const admin = require('firebase-admin');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// CORS configuration
-const corsOptions = {
-  origin: ['https://w-306-mealy.vercel.app', 'http://localhost:3000'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  exposedHeaders: ['Access-Control-Allow-Origin'],
-  preflightContinue: false,
-  optionsSuccessStatus: 204
-};
+// CORS middleware
+app.use((req, res, next) => {
+    // Allow your Vercel frontend domain
+    res.setHeader('Access-Control-Allow-Origin', 'https://w-306-mealy.vercel.app');
+    // Allow credentials
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    // Allow specific methods
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    // Allow specific headers
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control');
+    
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
+    
+    next();
+});
 
-// Apply CORS middleware before other middlewares
-app.use(cors(corsOptions));
-
-// Enable pre-flight requests for all routes
-app.options('*', cors(corsOptions));
-
-// Apply JSON middleware after CORS
+// Parse JSON requests
 app.use(express.json());
 
-// Add security headers middleware
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'https://w-306-mealy.vercel.app');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  next();
-});
-  
+// Root route with error handling
 app.get('/', (req, res) => {
-    res.json({ message: 'Welcome to the API' });
-  });
+    try {
+        res.json({ message: 'Welcome to the API' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
 
 // Initialize Firebase Admin
