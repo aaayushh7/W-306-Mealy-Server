@@ -5,26 +5,23 @@ const admin = require('firebase-admin');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// CORS middleware
-app.use((req, res, next) => {
-    // Allow your Vercel frontend domain
+const allowCors = fn => async (req, res) => {
+    res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', 'https://w-306-mealy.vercel.app');
-    // Allow credentials
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    // Allow specific methods
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    // Allow specific headers
-    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, Cache-Control'
+    );
     
-    // Handle preflight requests
     if (req.method === 'OPTIONS') {
-      return res.status(200).end();
+      res.status(200).end();
+      return;
     }
-    
-    next();
-});
-
-// Parse JSON requests
+    return await fn(req, res);
+  };
+  
+  // Parse JSON requests
 app.use(express.json());
 
 // Root route with error handling
