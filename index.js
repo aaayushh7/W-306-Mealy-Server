@@ -1,37 +1,24 @@
 require('dotenv').config();
 const express = require('express');
+
+const cors = require('cors');
 const mongoose = require('mongoose');
 const admin = require('firebase-admin');
+// const serviceAccount = require('./firebase-service-account.json');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// CORS middleware following Vercel's pattern
-const allowCors = fn => async (req, res) => {
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', 'https://w-306-mealy.vercel.app');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
-  );
+// Middleware
+app.use(cors({
+    origin: ['https://w-306-mealy.vercel.app', 'http://localhost:3000'],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    optionsSuccessStatus: 200
+  }));
+  app.use(express.json());
 
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-
-  return await fn(req, res);
-};
-
-// Apply CORS middleware to all routes
-app.use((req, res, next) => {
-  allowCors((req, res) => {
-    next();
-  })(req, res);
-});
-
-app.use(express.json());
 // Initialize Firebase Admin
 try {
     admin.initializeApp({
