@@ -11,10 +11,11 @@ const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors({
-    origin: 'https://w-306-mealy.vercel.app/',
+    origin: ['https://w-306-mealy.vercel.app', 'http://localhost:3000'],
     credentials: true,
-    optionsSuccessStatus: 200,
-    exposedHeaders: ['Access-Control-Allow-Origin']
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    optionsSuccessStatus: 200
   }));
   app.use(express.json());
 
