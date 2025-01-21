@@ -113,9 +113,7 @@ const scheduleSchema = new mongoose.Schema({
 });
 
 const User = mongoose.model('User', userSchema);
-User.countDocuments = async function() {
-  return this.count({});
-};
+
 const Schedule = mongoose.model('Schedule', scheduleSchema);
 
 // Auth middleware
