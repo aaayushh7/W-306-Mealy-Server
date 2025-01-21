@@ -143,26 +143,27 @@ app.get('/', (req, res) => {
 // Routes
 app.post('/api/users/register', authenticateUser, async (req, res) => {
   try {
+    console.log('Starting registration process...');
+    console.log('User count:', await User.countDocuments());
 
     const userCount = await User.countDocuments();
     if (userCount >= 5) {
-      return res.status(403).json({ 
-        error: 'Maximum users reached' 
-      });
+      return res.status(403).json({ error: 'Maximum users reached' });
     }
 
     const { name, email } = req.body;
-    const firebaseUid = req.user.uid;
+    console.log('Request body:', { name, email });
+    console.log('Firebase UID:', req.user.uid);
 
-    let user = await User.findOne({ firebaseUid });
+    let user = await User.findOne({ firebaseUid: req.user.uid });
     if (!user) {
-      user = new User({ name, email, firebaseUid });
+      user = new User({ name, email, firebaseUid: req.user.uid });
       await user.save();
     }
 
     res.json(user);
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('Full registration error:', error);
     res.status(500).json({ error: error.message });
   }
 });
