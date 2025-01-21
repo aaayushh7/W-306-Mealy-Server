@@ -141,28 +141,33 @@ app.get('/', (req, res) => {
 // Routes
 app.post('/api/users/register', authenticateUser, async (req, res) => {
   try {
-    console.log('Registration attempt:', req.body);  // Add logging
+    console.log('Registration attempt:', req.body);
     
+    const { name, email } = req.body;
+    const firebaseUid = req.user.uid;
+    console.log('Firebase UID:', firebaseUid);
+
+    // First check if user already exists
+    let existingUser = await User.findOne({ firebaseUid });
+    if (existingUser) {
+      return res.json(existingUser); // Return existing user without checking count
+    }
+
+    // Only check user count for new registrations
     const userCount = await User.countDocuments();
-    console.log('Current user count:', userCount);   // Add logging
+    console.log('Current user count:', userCount);
     
     if (userCount >= 5) {
       return res.status(403).json({ error: 'Maximum users reached' });
     }
 
-    const { name, email } = req.body;
-    const firebaseUid = req.user.uid;
-    console.log('Firebase UID:', firebaseUid);      // Add logging
+    // Create new user
+    const newUser = new User({ name, email, firebaseUid });
+    await newUser.save();
+    res.json(newUser);
 
-    let user = await User.findOne({ firebaseUid });
-    if (!user) {
-      user = new User({ name, email, firebaseUid });
-      await user.save();
-    }
-
-    res.json(user);
   } catch (error) {
-    console.error('Detailed registration error:', error); // Enhanced error logging
+    console.error('Detailed registration error:', error);
     res.status(500).json({ error: error.message });
   }
 });
