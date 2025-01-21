@@ -235,18 +235,30 @@ app.post('/api/users/mark-eaten', authenticateUser, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Prevent marking as eaten if user is away
     if (user.isAway) {
       return res.status(400).json({ 
         error: 'Cannot mark as eaten while in away mode'
       });
     }
 
+    const currentPeriod = getMealPeriod();
+    if (currentPeriod === 'none') {
+      return res.status(400).json({
+        error: 'Can only mark meals during lunch or dinner periods'
+      });
+    }
+
     user.hasEaten = true;
     user.lastEatenAt = new Date();
+    user.mealHistory.push({
+      date: new Date(),
+      mealType: currentPeriod === 'lunch' ? 'Lunch' : 'Dinner',
+      eaten: true,
+      status: 'eaten'
+    });
+    
     await user.save();
 
-    // Return full user list to refresh UI
     const users = await User.find().select('-fcmToken');
     res.json(users);
   } catch (error) {
@@ -254,6 +266,47 @@ app.post('/api/users/mark-eaten', authenticateUser, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+let lastMealPeriod = getMealPeriod();
+
+setInterval(async () => {
+  const currentPeriod = getMealPeriod();
+  
+  // Only process if we're transitioning between different meal periods
+  if (currentPeriod !== lastMealPeriod) {
+    try {
+      // If we're leaving a meal period (lunch or dinner), process missed meals
+      if (lastMealPeriod === 'lunch' || lastMealPeriod === 'dinner') {
+        const users = await User.find({ 
+          isAway: false, 
+          hasEaten: false 
+        });
+        
+        for (const user of users) {
+          user.missedMealsCount = (user.missedMealsCount || 0) + 1;
+          user.mealHistory.push({
+            date: new Date(),
+            mealType: lastMealPeriod === 'lunch' ? 'Lunch' : 'Dinner',
+            eaten: false,
+            status: 'missed'
+          });
+          await user.save();
+        }
+      }
+      
+      // Reset eaten status for all non-away users for the new period
+      await User.updateMany(
+        { isAway: false }, 
+        { hasEaten: false }
+      );
+      
+      lastMealPeriod = currentPeriod;
+    } catch (error) {
+      console.error('Meal period transition error:', error);
+    }
+  }
+}, 60000); // Check every minute
+
 app.get('/api/schedule', authenticateUser, async (req, res) => {
   try {
     let schedule = await Schedule.findOne();
@@ -292,26 +345,52 @@ app.put('/api/schedule', authenticateUser, async (req, res) => {
 
 app.post('/api/users/reset-eaten', authenticateUser, async (req, res) => {
   try {
-    const users = await User.find({ isAway: false, hasEaten: false });
+    const { previousMealPeriod } = req.body;
+    const currentPeriod = getMealPeriod();
     
-    for (const user of users) {
-      user.missedMealsCount = (user.missedMealsCount || 0) + 1;
-      user.mealHistory.push({
-        date: new Date(),
-        mealType: getCurrentMealType(),
-        eaten: false,
-        status: 'missed'
+    // Only process missed meals if we were in a valid meal period
+    if (previousMealPeriod === 'lunch' || previousMealPeriod === 'dinner') {
+      const users = await User.find({ 
+        isAway: false, 
+        hasEaten: false 
       });
-      await user.save();
+      
+      // Update missed meals count and history only for users who haven't eaten
+      for (const user of users) {
+        user.missedMealsCount = (user.missedMealsCount || 0) + 1;
+        user.mealHistory.push({
+          date: new Date(),
+          mealType: previousMealPeriod === 'lunch' ? 'Lunch' : 'Dinner',
+          eaten: false,
+          status: 'missed'
+        });
+        await user.save();
+      }
     }
 
-    await User.updateMany({ isAway: false }, { hasEaten: false });
+    // Reset eaten status for next period
+    await User.updateMany(
+      { isAway: false }, 
+      { hasEaten: false }
+    );
+
     const updatedUsers = await User.find().select('-fcmToken');
     res.json(updatedUsers);
   } catch (error) {
+    console.error('Reset eaten status error:', error);
     res.status(500).json({ error: error.message });
   }
 });
+
+function getMealPeriod() {
+  const hours = new Date().getHours();
+  if (hours >= 7 && hours < 17) {
+    return 'lunch';
+  } else if (hours >= 17 || hours < 7) {
+    return 'dinner';
+  }
+  return 'none';
+}
 
 function getCurrentMealType() {
   const hours = new Date().getHours();
