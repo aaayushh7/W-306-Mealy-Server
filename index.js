@@ -71,7 +71,11 @@ const mealHistorySchema = new mongoose.Schema({
     type: String,
     enum: ['Lunch', 'Dinner']
   },
-  eaten: Boolean
+  eaten: Boolean,
+  status: {
+    type: String,
+    enum: ['eaten', 'missed']
+  }
 });
 
 const userSchema = new mongoose.Schema({
@@ -90,7 +94,11 @@ const userSchema = new mongoose.Schema({
     default: false
   },
   awayStartDate: Date,
-  awayEndDate: Date
+  awayEndDate: Date,
+  missedMealsCount: {
+    type: Number,
+    default: 0
+  },
 });
 
 const scheduleSchema = new mongoose.Schema({
@@ -105,6 +113,9 @@ const scheduleSchema = new mongoose.Schema({
 });
 
 const User = mongoose.model('User', userSchema);
+User.countDocuments = async function() {
+  return this.count({});
+};
 const Schedule = mongoose.model('Schedule', scheduleSchema);
 
 // Auth middleware
@@ -132,6 +143,14 @@ app.get('/', (req, res) => {
 // Routes
 app.post('/api/users/register', authenticateUser, async (req, res) => {
   try {
+
+    const userCount = await User.countDocuments();
+    if (userCount >= 5) {
+      return res.status(403).json({ 
+        error: 'Maximum users reached' 
+      });
+    }
+
     const { name, email } = req.body;
     const firebaseUid = req.user.uid;
 
@@ -273,13 +292,31 @@ app.put('/api/schedule', authenticateUser, async (req, res) => {
 
 app.post('/api/users/reset-eaten', authenticateUser, async (req, res) => {
   try {
+    const users = await User.find({ isAway: false, hasEaten: false });
+    
+    for (const user of users) {
+      user.missedMealsCount = (user.missedMealsCount || 0) + 1;
+      user.mealHistory.push({
+        date: new Date(),
+        mealType: getCurrentMealType(),
+        eaten: false,
+        status: 'missed'
+      });
+      await user.save();
+    }
+
     await User.updateMany({ isAway: false }, { hasEaten: false });
-    const users = await User.find().select('-fcmToken');
-    res.json(users);
+    const updatedUsers = await User.find().select('-fcmToken');
+    res.json(updatedUsers);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
+
+function getCurrentMealType() {
+  const hours = new Date().getHours();
+  return hours >= 7 && hours < 17 ? 'Lunch' : 'Dinner';
+}
 
 app.post('/api/report-food-finished', authenticateUser, async (req, res) => {
   try {
